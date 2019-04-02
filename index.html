@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zn">
+<head>
+    <meta charset="UTF-8">
+    <title>贪吃蛇</title>
+    <style>
+        #base{
+
+            border: 4px solid #87CEEB;
+            /*background-color: #000;*/
+            position: relative;
+        }
+        .box{
+            width: 10px;
+            height: 10px;/*
+            border: 1px solid green;*/
+            background-color: #000;
+            position: absolute;
+            font-size: 10px;
+        }
+        .yellow{
+            background-color: yellow;
+        }
+        .green{
+            background-color: green;
+            border: 1px solid #fff;
+        }
+        .red{
+            background-color:red;
+            /*border: 1px solid red;*/
+        }
+    </style>
+</head>
+<body onkeydown="game.direct(event||window.event)">
+</body>
+<script type="text/javascript">
+window.onload=function(){
+    game.init();
+}
+var state = 0;//0:box;1:食物;2:贪吃蛇
+var base = {
+    get:function(id){return document.getElementById(id);},
+    create:function(name){return document.createElement(name);},
+    cdiv:function(classname,id){var div = this.create('div');if(classname!=null){div.className = classname;}if(id!=null){div.id=id;}return div;},
+    appch:function(classname,id){
+        this.get(id).appendChild(classname);
+    },
+    removeall:function(id){for(var i=this.get(id).children.length-1;i>-1;i--){this.get(id).removeChild(this.get(id).children[i]);}},
+    removelast:function(id){this.get(id).removeChild(this.get(id).lastChild);}
+}
+function inArray(string,array){
+    for (var i = 0; i < array.length; i++) {
+        if (array[i]==string){
+            return true;
+        }
+    }
+    return false;
+}
+var timer = null;
+var game = {
+    bwidth:600,
+    bheight:600,
+    column:20,
+    row:20,
+    width:30,
+    height:30,
+    map:[],
+    snake:[],
+    foodlive:false,
+    foodx:null,
+    foody:null,
+    foodhand:null,
+    snakelive:true, 
+    snakex:null,
+    snakey:null,
+    snakehand:null,
+    snakedirect:null,
+
+    drawbase:function(){
+        var divMap = base.cdiv(null,'base');
+        divMap.setAttribute('style','width:'+this.bwidth+'px;height:'+this.bheight+'px;');
+        document.body.appendChild(divMap); 
+    },
+    drawmap:function(){
+        for(var i=0;i<this.row;i++){
+            this.map[i] = [];
+            for(var j=0;j<this.column;j++){
+                this.map[i][j] = 0;//0:box,1:蛇,2:食物
+            }            
+        }
+        this.snakex = Math.floor(Math.random()*this.row);
+        this.snakey = Math.floor(Math.random()*this.column);
+        this.foodx = Math.floor(Math.random()*this.row);
+        this.foody = Math.floor(Math.random()*this.column);            
+        if(this.snakex==this.foodx&&this.snakey==this.foody){
+            this.foodx = Math.floor(Math.random()*this.row);
+            this.foody = Math.floor(Math.random()*this.column);
+        }
+        this.foodhand = this.foodx*this.column+this.foody;
+        this.map[this.snakex][this.snakey] = 1;//1:蛇
+        this.map[this.foodx][this.foody] = 2;//2:食物     
+        
+        for(var i=0;i<this.row;i++){
+            for(var j=0;j<this.column;j++){
+                var box = base.cdiv('box',null);
+
+                if(this.map[i][j]==1){
+                    this.snake[0] = i*this.column+j;
+                    box.setAttribute('class','box red');
+                }else if(this.map[i][j]==2){
+                    box.setAttribute('class','box yellow');
+                }else{
+                    box.setAttribute('class','box');
+                }
+
+                box.setAttribute('id',i*this.column+j);
+                box.setAttribute('style','top:'+(i*this.height)+'px;left:'+(j*this.width)+'px;width:'+(this.bwidth/this.column)+'px;height:'+(this.bheight/this.row)+'px;');
+                // box.innerHTML = i*this.column+j+"</br>"+'['+i+','+j+']';
+
+                base.appch(box,'base');
+
+            }
+        }
+                                    
+    },
+    direct:function(ev){
+        var n = ev.keyCode;
+        switch(n){
+            case 38:
+                if(this.snakedirect!=2){
+                    this.snakedirect = 0;                    
+                }
+            break;
+            case 39:
+                if(this.snakedirect!=3){
+                    this.snakedirect = 1;    
+                }
+            break;
+            case 40:
+                if(this.snakedirect!=0){
+                    this.snakedirect = 2;    
+                }
+            break;
+            case 37:
+                if(this.snakedirect!=1){
+                    this.snakedirect = 3;    
+                }
+            break;                                    
+        }
+    },
+    move:function(){ 
+        var initposition = this.snake[0];
+        var startposition = this.snake[0];//startposition: box的id
+        switch(this.snakedirect){
+            case 0:
+                startposition = this.snake[0]-this.column; 
+                if(startposition<0){
+                    this.fail();
+                } 
+            break;
+            case 1:
+                startposition = this.snake[0]+1;
+                if(startposition%this.column==0){
+                    this.fail();
+                }
+            break;
+            case 2:
+                startposition = this.snake[0]+this.column;
+                if(startposition>(this.column*this.row)){
+                    this.fail();
+                }
+            break;
+            case 3:
+                startposition = this.snake[0]-1;
+                if((startposition+1)%this.column==0){
+                    this.fail();
+                }                
+            break;
+        }
+
+        if(initposition!=startposition&&inArray(startposition,this.snake)){
+            this.fail();
+        }
+        this.snake.unshift(startposition);//向数组的开头添加元素
+        for(var i=0;i<this.snake.length;i++){
+            base.get(this.snake[i]).setAttribute('class','box green');
+            base.get(this.snake[0]).setAttribute('class','box red');
+        } 
+        if(this.snake[0]==this.foodhand){
+            this.foodlive = false;
+            this.drawfood();
+        }else{
+            var endposition = this.snake.pop();//删除并返回数组的最后一个元素 即本例子的id
+            if(endposition!=this.snake[0]){
+                base.get(endposition).setAttribute('class','box');
+            }        
+        }
+        document.title = this.snake.length;                
+        timer = setTimeout(function(){game.move();},250);
+    },
+    drawfood:function(){     
+        if(this.foodlive==false){
+            var boxs = base.get('base').children;
+            this.foodx = Math.floor(Math.random()*this.row);
+            this.foody = Math.floor(Math.random()*this.column);            
+            this.foodhand = this.foodx*this.column+this.foody;
+            if(inArray(this.foodhand,this.snake)){
+                this.foodx = Math.floor(Math.random()*this.row);
+                this.foody = Math.floor(Math.random()*this.column);            
+                this.foodhand = this.foodx*this.column+this.foody;                
+            }
+            boxs[this.foodhand].setAttribute('class','box yellow');
+            this.foodlive=true;
+        }      
+    },
+    fail:function(){
+        alert('fail');
+        window.clearInterval(timer);
+        return false;
+    },
+    init:function(){
+        this.drawbase();
+        this.drawmap();  
+        this.move();
+    }
+}
+</script>
+</html>
